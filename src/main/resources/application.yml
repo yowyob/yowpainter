@@ -1,0 +1,151 @@
+server:
+  port: ${PORT:8090}
+  max-http-request-header-size: 65536
+  error:
+    include-message: always
+
+spring:
+  application:
+    name: yowpainter-api
+
+
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+  datasource:
+    # Local : SPRING_DATASOURCE_* dans .env.local
+    # Render : PGHOST / PGPORT / PGDATABASE / PGUSER / PGPASSWORD (render.yaml)
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:postgres}}
+    username: ${SPRING_DATASOURCE_USERNAME:${PGUSER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${PGPASSWORD:}}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      schema: public
+      connection-timeout: 30000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+
+    show-sql: true
+
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    out-of-order: true
+
+    schemas:
+      - public
+
+    locations:
+      - classpath:db/migration/public
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+
+    properties:
+      mail:
+        smtp:
+          auth: true
+
+          starttls:
+            enable: true
+
+# ======================================================
+# KERNEL
+# ======================================================
+
+ksm:
+  kernel:
+    base-url: ${KSM_KERNEL_BASE_URL}
+
+    client-id: ${KSM_KERNEL_CLIENT_ID}
+
+    api-key: ${KSM_KERNEL_API_KEY}
+
+    tenant-id: ${KSM_KERNEL_TENANT_ID}
+
+    jwk-set-uri: ${KSM_KERNEL_JWK_SET_URI:}
+
+    default-plan-code: ${KSM_KERNEL_DEFAULT_PLAN_CODE:COMMERCE}
+
+    default-currency: ${KSM_KERNEL_DEFAULT_CURRENCY:XAF}
+
+    signup-platform-organization-code: ${KSM_KERNEL_SIGNUP_PLATFORM_ORG_CODE:yow-painter}
+
+    auto-provision-artists: ${KSM_KERNEL_AUTO_PROVISION_ARTISTS:false}
+
+    system-user-email: ${KSM_KERNEL_SYSTEM_USER_EMAIL:samuelftagat@gmail.com}
+
+    system-user-password: ${KSM_KERNEL_SYSTEM_USER_PASSWORD:Samuelseanpaint2*}
+
+    bootstrap-admin-username: ${KSM_KERNEL_BOOTSTRAP_ADMIN_USERNAME:}
+
+    bootstrap-admin-password: ${KSM_KERNEL_BOOTSTRAP_ADMIN_PASSWORD:}
+
+    bootstrap-client-id: ${KSM_KERNEL_BOOTSTRAP_CLIENT_ID:}
+
+    bootstrap-api-key: ${KSM_KERNEL_BOOTSTRAP_API_KEY:}
+
+    legacy-migration:
+      enabled: ${KSM_KERNEL_LEGACY_MIGRATION_ENABLED:false}
+
+    kafka:
+      enabled: ${KSM_KERNEL_KAFKA_ENABLED:false}
+      bootstrap-servers: ${KSM_KERNEL_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      topic: ${KSM_KERNEL_KAFKA_TOPIC:iwm.events.business}
+      group-id: ${KSM_KERNEL_KAFKA_GROUP_ID:yowpainter-backend}
+
+# ======================================================
+# APPLICATION
+# ======================================================
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+  artwork:
+    video:
+      max-size: 52428800
+      allowed-formats: mp4,mov,webm,ogg
+      allowed-mime-types: video/mp4,video/quicktime,video/webm,video/ogg
+      max-count: 3
+
+  payment:
+    campay:
+      app-username: ${CAMPAY_USERNAME:test-user}
+
+      app-password: ${CAMPAY_PASSWORD:tsElc7CIo0G8d7-ducw6zyu1PzHg3cf1bp2dLLAiKsGatlwtr-AjXV5zTyogiilxtp-UoFj00naLJbLTG3EjWg}
+
+      base-url: ${CAMPAY_BASE_URL:https://demo.campay.net/api}
+
+      token-url: /token/
+      collect-url: /collect/
+      transaction-url: /transaction/
+      withdraw-url: /withdraw/
+
+# ======================================================
+# SWAGGER
+# ======================================================
+
+springdoc:
+  api-docs:
+    path: /api-docs
+
+  swagger-ui:
+    path: /swagger-ui.html

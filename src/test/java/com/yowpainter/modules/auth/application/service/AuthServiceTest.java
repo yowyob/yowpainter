@@ -1,0 +1,235 @@
+package com.yowpainter.modules.auth.application.service;
+
+import com.yowpainter.modules.artist.domain.model.Artist;
+import com.yowpainter.modules.artist.domain.port.out.ArtistRepositoryPort;
+import com.yowpainter.modules.auth.application.port.out.KernelAuthPort;
+import com.yowpainter.modules.auth.domain.model.AppUser;
+import com.yowpainter.modules.auth.domain.model.UserRole;
+import com.yowpainter.modules.auth.domain.port.out.AppUserRepositoryPort;
+import com.yowpainter.modules.auth.infrastructure.adapter.in.web.dto.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class AuthServiceTest {
+
+    @Mock
+    private AppUserRepositoryPort userRepository;
+
+    @Mock
+    private ArtistRepositoryPort artistRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private KernelAuthPort kernelAuthPort;
+
+    @Mock
+    private KernelArtistRegistrationService kernelArtistRegistrationService;
+
+    @Mock
+    private KernelBuyerRegistrationService kernelBuyerRegistrationService;
+
+    @Mock
+    private KernelAdminRegistrationService kernelAdminRegistrationService;
+
+    @InjectMocks
+    private AuthService authService;
+
+    private AppUser buyer;
+    private Artist artist;
+
+    @BeforeEach
+    void setUp() {
+        buyer = AppUser.builder()
+                .firstName("Alice")
+                .lastName("Smith")
+                .email("alice@example.com")
+                .passwordHash("hashed_password")
+                .role(UserRole.ROLE_BUYER)
+                .build();
+        buyer.setId(UUID.randomUUID());
+
+        artist = Artist.builder()
+                .firstName("John")
+                .lastName("Doe")
+                .email("john.doe@example.com")
+                .passwordHash("hashed_password")
+                .role(UserRole.ROLE_ARTIST)
+                .artistName("John's Studio")
+                .slug("johns-studio")
+                .build();
+        artist.setId(UUID.randomUUID());
+    }
+
+    @Test
+    void getAvailableRoles_shouldReturnArtistAndBuyer() {
+        List<String> roles = authService.getAvailableRoles();
+        assertThat(roles).containsExactlyInAnyOrder("ROLE_ARTIST", "ROLE_BUYER");
+    }
+
+    @Test
+    void processForgotPassword_shouldDelegateToKernelAndSendPreviewEmail() {
+        when(kernelAuthPort.forgotPassword("alice@example.com"))
+                .thenReturn(new KernelAuthPort.ForgotPasswordResult(
+                        "alice@example.com",
+                        1,
+                        "selection-token",
+                        3600,
+                        List.of(new KernelAuthPort.PasswordResetContext(
+                                "ctx-1", UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                                "alice", "alice@example.com"
+                        ))
+                ));
+        when(kernelAuthPort.issuePasswordReset("selection-token", "ctx-1"))
+                .thenReturn(new KernelAuthPort.IssuedPasswordResetResult("PREVIEW_ONLY", "reset-token", 3600));
+
+        authService.processForgotPassword("alice@example.com");
+
+        verify(kernelAuthPort).forgotPassword("alice@example.com");
+        verify(kernelAuthPort).issuePasswordReset("selection-token", "ctx-1");
+        verify(emailService).sendPasswordResetEmail("alice@example.com", "reset-token");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void registerAdmin_shouldDelegateToKernelAdminRegistration() {
+        AdminRegisterRequest request = AdminRegisterRequest.builder()
+                .email("admin@example.com")
+                .build();
+        AuthResponse expected = AuthResponse.builder().accessToken("admin-token").role("ROLE_ADMIN").build();
+        when(kernelAdminRegistrationService.registerAdmin(request)).thenReturn(expected);
+
+        AuthResponse response = authService.registerAdmin(request);
+
+        assertThat(response).isEqualTo(expected);
+        verify(kernelAdminRegistrationService).registerAdmin(request);
+    }
+
+    @Test
+    void register_withArtistRole_shouldDelegateToKernelArtistRegistration() {
+        RegisterRequest request = RegisterRequest.builder()
+                .role(UserRole.ROLE_ARTIST)
+                .email("john.doe@example.com")
+                .build();
+        AuthResponse expected = AuthResponse.builder().accessToken("token").build();
+        when(kernelArtistRegistrationService.registerArtist(request)).thenReturn(expected);
+
+        AuthResponse response = authService.register(request);
+
+        assertThat(response).isEqualTo(expected);
+        verify(kernelArtistRegistrationService).registerArtist(request);
+    }
+
+    @Test
+    void register_withBuyerRole_shouldDelegateToKernelBuyerRegistration() {
+        RegisterRequest request = RegisterRequest.builder()
+                .firstName("Alice")
+                .lastName("Smith")
+                .email("alice@example.com")
+                .password("password123")
+                .role(UserRole.ROLE_BUYER)
+                .build();
+
+        AuthResponse expected = AuthResponse.builder()
+                .email("alice@example.com")
+                .registrationStatus("PENDING_EMAIL")
+                .message("Inscription enregistree. Un e-mail de verification vous a ete envoye pour activer votre compte.")
+                .build();
+        when(kernelBuyerRegistrationService.registerBuyer(request)).thenReturn(expected);
+
+        AuthResponse response = authService.register(request);
+
+        assertThat(response).isEqualTo(expected);
+        verify(kernelBuyerRegistrationService).registerBuyer(request);
+    }
+
+    @Test
+    void login_shouldDelegateToKernel() {
+        LoginRequest request = LoginRequest.builder()
+                .email("john.doe@example.com")
+                .password("password123")
+                .build();
+
+        when(kernelAuthPort.login("john.doe@example.com", "password123"))
+                .thenReturn(mockLoginResult(UUID.randomUUID(), "john", "john.doe@example.com", "access", "refresh", Set.of("ROLE_ARTIST")));
+        when(artistRepository.findByKernelUserId(any())).thenReturn(Optional.of(artist));
+        when(artistRepository.save(any(Artist.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AuthResponse response = authService.login(request);
+
+        assertThat(response.getAccessToken()).isEqualTo("access");
+        assertThat(response.getArtistName()).isEqualTo("John's Studio");
+    }
+
+    @Test
+    void refreshToken_shouldDelegateToKernel() {
+        when(kernelAuthPort.refresh("refresh-token"))
+                .thenReturn(mockLoginResult(UUID.randomUUID(), "refreshed", "refreshed@example.com", "new-access", "refresh-token", Set.of("ROLE_BUYER")));
+
+        AuthResponse response = authService.refreshToken("refresh-token");
+
+        assertThat(response.getAccessToken()).isEqualTo("new-access");
+    }
+
+    @Test
+    void logout_shouldDeleteUserRefreshToken() {
+        authService.logout(buyer);
+        verify(refreshTokenService).deleteByUserId(buyer.getId());
+    }
+
+    private KernelAuthPort.KernelLoginResult mockLoginResult(UUID userId, String username, String email, String accessToken, String refreshToken, Set<String> roles) {
+        return new KernelAuthPort.KernelLoginResult(
+                userId,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                username,
+                email,
+                null,
+                null,
+                null,
+                "ACTIVE",
+                "COMMERCE",
+                "COMPLETED",
+                0,
+                "INDIVIDUAL",
+                null,
+                null,
+                true,
+                java.time.Instant.now(),
+                false,
+                null,
+                false,
+                null,
+                accessToken,
+                refreshToken,
+                "Bearer",
+                3600,
+                List.of(),
+                roles
+        );
+    }
+}

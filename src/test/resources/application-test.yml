@@ -1,0 +1,52 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    open-in-view: false
+  logging:
+    level:
+      com.yowpainter: DEBUG
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
+ksm:
+  kernel:
+    base-url: http://localhost:9999
+    client-id: test-client
+    api-key: test-api-key
+    tenant-id: 11111111-1111-1111-1111-111111111111
+    default-plan-code: COMMERCE
+    default-currency: XAF
+    signup-platform-organization-code: yow-painter
+    auto-provision-artists: true
+    system-user-email: samuelftagat@gmail.com
+    system-user-password: Samuelseanpaint2*
+    kafka:
+      enabled: false
+
+app:
+  artwork:
+    video:
+      max-size: 52428800
+      allowed-formats: mp4,mov,webm,ogg
+      allowed-mime-types: video/mp4,video/quicktime,video/webm,video/ogg
+      max-count: 3
+  payment:
+    campay:
+      app-username: ${CAMPAY_USERNAME:test-user}
+      app-password: ${CAMPAY_PASSWORD:tsElc7CIo0G8d7-ducw6zyu1PzHg3cf1bp2dLLAiKsGatlwtr-AjXV5zTyogiilxtp-UoFj00naLJbLTG3EjWg}
+      base-url: ${CAMPAY_BASE_URL:https://demo.campay.net/api}

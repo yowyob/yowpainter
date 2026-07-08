@@ -1,0 +1,73 @@
+# YowPainter backend (hexagonal, Java 17, JPA+Flyway) — painter.yowyob.com/painter-api.
+# Auth/relais via kernel (client yowpainter-backend, clé cote serveur). Postgres privé. Kafka mutualisé.
+services:
+  painter-backend:
+    image: "${APP_IMAGE:?APP_IMAGE requis}"
+    container_name: yowpainter-backend
+    pull_policy: always
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      PORT: "8090"
+      SERVER_FORWARD_HEADERS_STRATEGY: "framework"
+      # ── Postgres privé ──
+      PGHOST: "painter-db"
+      PGPORT: "5432"
+      PGDATABASE: "yowpainter"
+      PGUSER: "yowpainter"
+      PGPASSWORD: "${PAINTER_DB_PASSWORD:?PAINTER_DB_PASSWORD requis dans .env}"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://painter-db:5432/yowpainter"
+      SPRING_DATASOURCE_USERNAME: "yowpainter"
+      SPRING_DATASOURCE_PASSWORD: "${PAINTER_DB_PASSWORD:?PAINTER_DB_PASSWORD requis dans .env}"
+      # ── Kernel (client yowpainter-backend, clé dans .env) ──
+      KSM_KERNEL_BASE_URL: "https://kernel-core.yowyob.com"
+      KSM_KERNEL_CLIENT_ID: "yowpainter-backend"
+      KSM_KERNEL_API_KEY: "${PAINTER_KERNEL_API_KEY:?PAINTER_KERNEL_API_KEY requis dans .env}"
+      KSM_KERNEL_TENANT_ID: "11111111-1111-1111-1111-111111111111"
+      KSM_KERNEL_JWK_SET_URI: "https://kernel-core.yowyob.com/.well-known/jwks.json"
+      # ── Kafka mutualisé (optionnel, activé) ──
+      KSM_KERNEL_KAFKA_ENABLED: "true"
+      KSM_KERNEL_KAFKA_BOOTSTRAP_SERVERS: "yowyob-shared-kafka:9092"
+      # ── Front ──
+      FRONTEND_URL: "https://painter.yowyob.com"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/actuator/health >/dev/null 2>&1 || wget -qO- http://localhost:8090/ >/dev/null 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    logging: { driver: "json-file", options: { max-size: "50m", max-file: "5" } }
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.painter-api.rule=Host(`painter.yowyob.com`) && PathPrefix(`/painter-api`)"
+      - "traefik.http.routers.painter-api.entrypoints=websecure"
+      - "traefik.http.routers.painter-api.tls=true"
+      - "traefik.http.routers.painter-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.painter-api.priority=100"
+      - "traefik.http.middlewares.painter-api-strip.stripprefix.prefixes=/painter-api"
+      - "traefik.http.routers.painter-api.middlewares=painter-api-strip"
+      - "traefik.http.services.painter-api.loadbalancer.server.port=8090"
+      - "traefik.docker.network=yowyob"
+    depends_on:
+      painter-db: { condition: service_healthy }
+    networks: [yowyob, painter-net]
+  painter-db:
+    image: postgres:16-alpine
+    container_name: yowpainter-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "yowpainter"
+      POSTGRES_USER: "yowpainter"
+      POSTGRES_PASSWORD: "${PAINTER_DB_PASSWORD:?PAINTER_DB_PASSWORD requis dans .env}"
+    volumes: [painter-db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yowpainter -d yowpainter"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [painter-net]
+volumes:
+  painter-db-data:
+networks:
+  yowyob: { external: true, name: yowyob }
+  painter-net: { name: yowpainter-net }
