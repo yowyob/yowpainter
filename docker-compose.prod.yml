@@ -31,7 +31,7 @@ services:
       # ── Front ──
       FRONTEND_URL: "https://painter.yowyob.com"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/actuator/health >/dev/null 2>&1 || wget -qO- http://localhost:8090/ >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/ >/dev/null 2>&1 || wget -S -qO- http://localhost:8090/actuator/health >/dev/null 2>&1; [ $? -lt 8 ] && exit 0 || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 20
