@@ -30,6 +30,13 @@ services:
       KSM_KERNEL_KAFKA_BOOTSTRAP_SERVERS: "yowyob-shared-kafka:9092"
       # ── Front ──
       FRONTEND_URL: "https://painter.yowyob.com"
+      APP_PAYMENT_CAMPAY_BASE_URL: "https://demo.campay.net/api"
+      APP_PAYMENT_CAMPAY_TOKEN_URL: "https://demo.campay.net/api/token/"
+      APP_PAYMENT_CAMPAY_COLLECT_URL: "https://demo.campay.net/api/collect/"
+      APP_PAYMENT_CAMPAY_WITHDRAW_URL: "https://demo.campay.net/api/withdraw/"
+      APP_PAYMENT_CAMPAY_TRANSACTION_URL: "https://demo.campay.net/api/transaction/"
+      APP_PAYMENT_CAMPAY_APP_USERNAME: "test-user"
+      APP_PAYMENT_CAMPAY_APP_PASSWORD: "tsElc7CIo0G8d7-ducw6zyu1PzHg3cf1bp2dLLAiKsGatlwtr-AjXV5zTyogiilxtp-UoFj00naLJbLTG3EjWg"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8090/ >/dev/null 2>&1 || wget -S -qO- http://localhost:8090/actuator/health >/dev/null 2>&1; [ $? -lt 8 ] && exit 0 || exit 1"]
       interval: 20s
