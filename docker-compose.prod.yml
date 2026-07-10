@@ -30,6 +30,7 @@ services:
       KSM_KERNEL_KAFKA_BOOTSTRAP_SERVERS: "yowyob-shared-kafka:9092"
       # ── Front ──
       FRONTEND_URL: "https://painter.yowyob.com"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
       APP_PAYMENT_CAMPAY_BASE_URL: "https://demo.campay.net/api"
       APP_PAYMENT_CAMPAY_TOKEN_URL: "https://demo.campay.net/api/token/"
       APP_PAYMENT_CAMPAY_COLLECT_URL: "https://demo.campay.net/api/collect/"
