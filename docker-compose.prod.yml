@@ -25,6 +25,9 @@ services:
       KSM_KERNEL_API_KEY: "${PAINTER_KERNEL_API_KEY:?PAINTER_KERNEL_API_KEY requis dans .env}"
       KSM_KERNEL_TENANT_ID: "11111111-1111-1111-1111-111111111111"
       KSM_KERNEL_JWK_SET_URI: "https://kernel-core.yowyob.com/kernel-api/.well-known/jwks.json"
+      # Compte machine du noyau (telechargement des fichiers pour les visiteurs non connectes), dans .env.
+      KSM_KERNEL_SYSTEM_USER_EMAIL: "${PAINTER_SYSTEM_USER_EMAIL:-}"
+      KSM_KERNEL_SYSTEM_USER_PASSWORD: "${PAINTER_SYSTEM_USER_PASSWORD:-}"
       # ── Kafka mutualisé (optionnel, activé) ──
       KSM_KERNEL_KAFKA_ENABLED: "false"
       KSM_KERNEL_KAFKA_BOOTSTRAP_SERVERS: "yowyob-shared-kafka:9092"
